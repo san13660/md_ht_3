@@ -1,3 +1,6 @@
+#Christopher Sandoval 13660
+#Maria Fernanda Estrada 14198
+
 install.packages("cluster")
 install.packages("fpc")
 install.packages("factoextra")
@@ -42,17 +45,12 @@ for (i in 2:10)
 
 plot(1:10, wss, type="b", xlab="Number of Clusters",  ylab="Within groups sum of squares")
 
-# a. Método de las siluetas para k-means
 km<-kmeans(data_training_filtered,3)
 silkm<-silhouette(km$cluster,dist(data_training_filtered))
 mean(silkm[,3])
 plotcluster(data_training_filtered, km$cluster)
 data_training_filtered$Class<-km$cluster
 
-
-data_training_filtered$Class <- mapvalues(data_training_filtered$Class,
-                                          from = c(1,3,2),
-                                          to = c("Economica", "Intermedia", "Cara"))
 
 data_training_filtered$Class <- as.factor(ifelse(data_training_filtered$SalePrice >= 270000, "Cara", ifelse(data_training_filtered$SalePrice >= 195000, "Intermedia", "Economica")))
 
@@ -85,3 +83,29 @@ data_sample <- read.csv("sample_submission.csv", stringsAsFactors = FALSE)
 data_sample$Class <- as.factor(ifelse(data_sample$SalePrice >= 270000, "Cara", ifelse(data_sample$SalePrice >= 195000, "Intermedia", "Economica")))
 cfm<-confusionMatrix(data_test_filtered$prediccion,data_sample$Class)
 cfm
+
+#Prediccion arbol de regresion
+data_test <- read.csv("test.csv", stringsAsFactors = FALSE)
+data_test_filtered <- data_test[, c("OverallQual", "TotalBsmtSF", "X1stFlrSF", "GrLivArea", "FullBath", "YearBuilt")]
+prediccion <- predict(dt_model_regression, newdata = data_test_filtered)
+data_test_filtered$prediccion<-prediccion
+#Porcentaje de error en prediccion
+data_sample <- read.csv("sample_submission.csv", stringsAsFactors = FALSE)
+data_test_filtered$real<-data_sample$SalePrice
+data_test_filtered$error<-(abs(data_test_filtered$prediccion-data_test_filtered$real)/data_test_filtered$real)*100
+
+error_total <- sum(data_test_filtered$error)/nrow(data_test_filtered)
+error_total
+#Error 28.61%
+
+#Random forest
+data_test <- read.csv("test.csv", stringsAsFactors = FALSE)
+data_test_filtered <- data_test[, c("OverallQual", "TotalBsmtSF", "X1stFlrSF", "GrLivArea", "FullBath", "YearBuilt")]
+modeloRF1<-randomForest(Class~.,data=data_training_filtered_no_price)
+prediccionRF1<-predict(modeloRF1,newdata = data_test_filtered)
+testCompleto<-data_test_filtered
+testCompleto$predRF<-prediccionRF1
+data_sample <- read.csv("sample_submission.csv", stringsAsFactors = FALSE)
+data_sample$Class <- as.factor(ifelse(data_sample$SalePrice >= 270000, "Cara", ifelse(data_sample$SalePrice >= 195000, "Intermedia", "Economica")))
+cfmRandomForest <- confusionMatrix(testCompleto$predRF, data_sample$Class)
+cfmRandomForest
